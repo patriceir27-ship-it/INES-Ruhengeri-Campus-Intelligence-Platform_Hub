@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ines-campus-intelligence
+    runtime: node
+    buildCommand: yarn
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
