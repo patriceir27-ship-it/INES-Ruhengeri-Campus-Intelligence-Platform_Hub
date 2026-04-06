@@ -6,6 +6,42 @@
 
 "use strict";
 
+/* ─── Chart.js cleanup helper ──────────────────────────────────────────────
+   Chart.js v4 does NOT auto-destroy when innerHTML is replaced.
+   We must call Chart.getChart(canvasEl) on every canvas before re-render.
+   This helper is called on every navigation AND before each chart render.
+─────────────────────────────────────────────────────────────────────────── */
+window.__destroyAllCharts = function() {
+  if (!window.Chart) return;
+  // Destroy via Chart.js v4 getChart API (works even after DOM replacement)
+  document.querySelectorAll('canvas').forEach(function(canvas) {
+    try {
+      var existing = window.Chart.getChart(canvas);
+      if (existing) existing.destroy();
+    } catch(e) {}
+  });
+  // Also clear the internal CHARTS registry used by charts.js
+  // so stale references don't block new renders on the same canvas id
+  if (window._INES_CHARTS_REGISTRY) {
+    Object.keys(window._INES_CHARTS_REGISTRY).forEach(function(k) {
+      try { window._INES_CHARTS_REGISTRY[k].destroy(); } catch(e) {}
+    });
+    Object.keys(window._INES_CHARTS_REGISTRY).forEach(function(k) {
+      delete window._INES_CHARTS_REGISTRY[k];
+    });
+  }
+};
+
+window.__destroyChart = function(id) {
+  if (!window.Chart) return;
+  var canvas = document.getElementById(id);
+  if (!canvas) return;
+  try {
+    var existing = window.Chart.getChart(canvas);
+    if (existing) existing.destroy();
+  } catch(e) {}
+};
+
 /* ─── PAGE META ─── */
 const PAGE_META = {
   dashboard:   { title: "Campus Intelligence Dashboard", sub: "Real-time overview — INES-Ruhengeri" },
@@ -132,21 +168,8 @@ window.navigateTo = function(pageId, navEl) {
   document.getElementById('page-title').textContent = meta.title;
   document.getElementById('page-sub').textContent   = meta.sub;
 
-  // Destroy all Chart.js instances before rendering new page (Chart.js v4 compatible)
-  if (window.Chart) {
-    // Chart.js v4 stores instances in Chart.instances as an object keyed by id
-    const instances = window.Chart.instances;
-    if (instances) {
-      Object.keys(instances).forEach(key => {
-        try { instances[key].destroy(); } catch(e) {}
-      });
-    }
-    // Also destroy any canvas elements directly as a fallback
-    document.querySelectorAll('canvas').forEach(canvas => {
-      const chart = window.Chart.getChart(canvas);
-      if (chart) { try { chart.destroy(); } catch(e) {} }
-    });
-  }
+  // Destroy all active Chart.js instances (v4 compatible)
+  window.__destroyAllCharts();
 
   // Render page content
   const generator = window.INES_PAGES[pageId];

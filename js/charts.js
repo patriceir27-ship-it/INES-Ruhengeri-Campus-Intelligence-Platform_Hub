@@ -7,6 +7,7 @@
 "use strict";
 
 const CHARTS = {};
+window._INES_CHARTS_REGISTRY = CHARTS; // exposed for cleanup
 
 /* ─── COLOR PALETTE ─── */
 const C = {
@@ -23,7 +24,16 @@ Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
 Chart.defaults.font.size = 11;
 
 function destroyChart(id) {
-  if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
+  // Primary: use Chart.js v4 getChart API
+  try {
+    var canvas = document.getElementById(id);
+    if (canvas && window.Chart) {
+      var existing = window.Chart.getChart(canvas);
+      if (existing) { existing.destroy(); }
+    }
+  } catch(e) {}
+  // Fallback: clear from registry
+  if (CHARTS[id]) { try { CHARTS[id].destroy(); } catch(e) {} delete CHARTS[id]; }
 }
 
 /* ─── ATTENDANCE LINE CHART ─── */
@@ -338,6 +348,7 @@ window.INES_CHARTS = {
 function renderEnergyChartData(id, readings) {
   const el = document.getElementById(id);
   if (!el) return;
+  window.__destroyChart && window.__destroyChart(id);
   const labels = readings.map(r => r.month);
   const kwh    = readings.map(r => parseFloat(r.reading_kwh));
   new Chart(el, {
@@ -367,6 +378,7 @@ function renderEnergyChartData(id, readings) {
 function renderResearchBarLive(id, deptData) {
   const el = document.getElementById(id);
   if (!el) return;
+  window.__destroyChart && window.__destroyChart(id);
   new Chart(el, {
     type: 'bar',
     data: {
