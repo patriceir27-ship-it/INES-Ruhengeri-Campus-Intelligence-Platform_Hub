@@ -31,7 +31,7 @@ const CHART_INITS = {
     const D = window.INES;
     C.renderAttendanceChart('chart-attendance', D.ATTENDANCE_WEEK);
     C.renderDeptRadar('chart-dept-radar', D.DEPT_PERF);
-    C.renderEnergyChart('chart-energy');
+    // Energy chart rendered by API loader with real DB data
   },
   students: () => {
     const C = window.INES_CHARTS;
@@ -131,6 +131,14 @@ window.navigateTo = function(pageId, navEl) {
   const meta = PAGE_META[pageId] || { title: pageId, sub: '' };
   document.getElementById('page-title').textContent = meta.title;
   document.getElementById('page-sub').textContent   = meta.sub;
+
+  // Destroy all existing Chart.js instances before rendering new page
+  // prevents "Canvas is already in use" errors on navigation
+  if (window.Chart && window.Chart.instances) {
+    Object.values(window.Chart.instances).forEach(chart => {
+      try { chart.destroy(); } catch(e) {}
+    });
+  }
 
   // Render page content
   const generator = window.INES_PAGES[pageId];
