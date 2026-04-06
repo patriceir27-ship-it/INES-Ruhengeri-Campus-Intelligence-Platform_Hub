@@ -1,0 +1,28 @@
+/* ===================================================
+   INES-RUHENGERI — charts.css
+   Chart container sizing & canvas management
+   =================================================== */
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+}
+.canvas-wrap canvas { display: block; }
+
+.chart-sm  { height: 140px; }
+.chart-md  { height: 200px; }
+.chart-lg  { height: 260px; }
+.chart-xl  { height: 320px; }
+
+/* Org chart SVG */
+.org-svg-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 520px;
+  padding-bottom: 8px;
+}
+.org-svg-wrap svg {
+  min-width: 900px;
+  display: block;
+}
