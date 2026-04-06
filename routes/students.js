@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
         COUNT(*) FILTER (WHERE gpa < 2.0) AS f
       FROM students`);
 
-    res.json({ students: result.rows, stats: stats.rows[0], grades: grades.rows[0] });
+    res.json({ students: result.rows, stats: stats.rows[0] || {}, grades: grades.rows[0] || {} });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -70,7 +70,7 @@ router.get('/at-risk', async (req, res) => {
       WHERE s.status = 'at_risk'
       ORDER BY risk DESC, s.attendance ASC`);
 
-    res.json({ atRisk: result.rows });
+    res.json({ atRisk: result.rows || [] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

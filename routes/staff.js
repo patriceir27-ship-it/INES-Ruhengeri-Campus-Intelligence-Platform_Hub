@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
         COUNT(*) FILTER (WHERE workload < 0.5) AS light
       FROM staff`);
 
-    res.json({ staff: result.rows, stats: stats.rows[0], workload: workload.rows[0] });
+    res.json({ staff: result.rows || [], stats: stats.rows[0] || {}, workload: workload.rows[0] || {} });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
