@@ -132,11 +132,19 @@ window.navigateTo = function(pageId, navEl) {
   document.getElementById('page-title').textContent = meta.title;
   document.getElementById('page-sub').textContent   = meta.sub;
 
-  // Destroy all existing Chart.js instances before rendering new page
-  // prevents "Canvas is already in use" errors on navigation
-  if (window.Chart && window.Chart.instances) {
-    Object.values(window.Chart.instances).forEach(chart => {
-      try { chart.destroy(); } catch(e) {}
+  // Destroy all Chart.js instances before rendering new page (Chart.js v4 compatible)
+  if (window.Chart) {
+    // Chart.js v4 stores instances in Chart.instances as an object keyed by id
+    const instances = window.Chart.instances;
+    if (instances) {
+      Object.keys(instances).forEach(key => {
+        try { instances[key].destroy(); } catch(e) {}
+      });
+    }
+    // Also destroy any canvas elements directly as a fallback
+    document.querySelectorAll('canvas').forEach(canvas => {
+      const chart = window.Chart.getChart(canvas);
+      if (chart) { try { chart.destroy(); } catch(e) {} }
     });
   }
 
