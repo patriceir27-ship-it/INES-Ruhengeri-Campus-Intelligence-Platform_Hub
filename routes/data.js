@@ -146,6 +146,22 @@ const handlers = {
     res.json({ byRole: byRole.rows, byDept: byDept.rows });
   },
 
+  // ─── ADD INCIDENT (POST) ─────────────────────────
+  async addIncident(req, res) {
+    const { type, location, severity } = req.body;
+    if (!type || !location) {
+      return res.status(400).json({ error: 'type and location are required' });
+    }
+    const sev = ['high','medium','low'].includes(severity) ? severity : 'medium';
+    const id  = 'INC-' + new Date().getFullYear() + '-' +
+                String(Math.floor(Math.random()*9000)+1000);
+    await pool.query(`
+      INSERT INTO incidents (incident_id, type, location, severity, status)
+      VALUES ($1, $2, $3, $4, 'open')`,
+      [id, type, location, sev]);
+    res.json({ success: true, incident_id: id });
+  },
+
   // ─── ENERGY ──────────────────────────────────────
   async energy(req, res) {
     const readings = await pool.query(`
