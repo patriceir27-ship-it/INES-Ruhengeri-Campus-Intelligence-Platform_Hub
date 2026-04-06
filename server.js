@@ -36,6 +36,17 @@ app.use('/api/staff',      require('./routes/staff'));
 const data = require('./routes/data');
 app.use('/api/visitors',   (req, res) => data(req, res, 'visitors'));
 app.use('/api/security',   (req, res) => data(req, res, 'security'));
+app.post('/api/incidents',  (req, res) => data(req, res, 'addIncident'));
+app.patch('/api/incidents/:id/resolve', async (req, res) => {
+  try {
+    const pool = require('./db/pool');
+    await pool.query(
+      `UPDATE incidents SET status='resolved', resolved_at=NOW() WHERE incident_id=$1`,
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
 app.use('/api/finance',    (req, res) => data(req, res, 'finance'));
 app.use('/api/research',   (req, res) => data(req, res, 'research'));
 app.use('/api/facilities', (req, res) => data(req, res, 'facilities'));

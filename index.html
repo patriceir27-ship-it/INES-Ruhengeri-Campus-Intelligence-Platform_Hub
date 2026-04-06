@@ -169,17 +169,20 @@
           <button class="time-btn" onclick="setTimeFilter(this,'semester')">Semester</button>
         </div>
         <button class="alert-bell" onclick="toggleAlerts()">
-          🔔 <span class="bell-badge">3</span>
+          🔔 <span class="bell-badge" id="bell-badge-count">…</span>
         </button>
       </div>
     </header>
 
     <!-- ALERTS DROPDOWN -->
     <div id="alerts-panel" class="alerts-panel hidden">
-      <div class="alerts-header">Active Alerts</div>
-      <div class="alert-item-row red">🔴 <b>Unauthorized entry — Gate B</b><span>9 min ago</span></div>
-      <div class="alert-item-row amber">🟡 <b>Lab C equipment malfunction</b><span>34 min ago</span></div>
-      <div class="alert-item-row blue">🔵 <b>Library at 98% capacity</b><span>1 hr ago</span></div>
+      <div class="alerts-header">
+        Active Alerts
+        <span id="alerts-last-updated" style="font-size:10px;color:#64748B;margin-left:8px"></span>
+      </div>
+      <div id="alerts-panel-body">
+        <div style="padding:12px;color:#64748B;font-size:12px">Loading…</div>
+      </div>
     </div>
 
     <!-- PAGE CONTENT -->
