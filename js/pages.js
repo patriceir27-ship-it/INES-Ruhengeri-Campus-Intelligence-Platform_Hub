@@ -461,32 +461,131 @@ PAGES.research_data = async () => {
 /* ══════════════════════════════════════════════════ */
 PAGES.security = () => `
 <div id="sec-kpi" class="kpi-grid">${loading()}</div>
-<div class="chart-card">
-  <div class="chart-title"><div class="chart-title-left">🔒 Incident Log (ISO)</div><span class="badge badge-red" id="open-badge">…</span></div>
-  <div id="incident-table">${loading()}</div>
+
+<div class="chart-grid">
+  <div class="chart-card" style="flex:2">
+    <div class="chart-title">
+      <div class="chart-title-left">🔒 Incident Log (ISO)</div>
+      <span class="badge badge-red" id="open-badge">…</span>
+    </div>
+    <div id="incident-table">${loading()}</div>
+  </div>
+
+  <div class="chart-card" style="flex:1">
+    <div class="chart-title"><div class="chart-title-left">➕ Report New Incident</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <div>
+        <div style="font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;margin-bottom:4px">Type</div>
+        <input id="inc-type" type="text" placeholder="e.g. Unauthorized Entry"
+          style="width:100%;background:#0B1929;border:1px solid #1E3A57;border-radius:6px;padding:8px 10px;color:#F0F6FF;font-size:12px;box-sizing:border-box"/>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;margin-bottom:4px">Location</div>
+        <input id="inc-location" type="text" placeholder="e.g. Gate B, Lab C"
+          style="width:100%;background:#0B1929;border:1px solid #1E3A57;border-radius:6px;padding:8px 10px;color:#F0F6FF;font-size:12px;box-sizing:border-box"/>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;margin-bottom:4px">Severity</div>
+        <select id="inc-severity" style="width:100%;background:#0B1929;border:1px solid #1E3A57;border-radius:6px;padding:8px 10px;color:#F0F6FF;font-size:12px">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🔵 Low</option>
+        </select>
+      </div>
+      <button onclick="submitIncident()"
+        style="background:#EF4444;color:#fff;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+        🚨 Report Incident
+      </button>
+      <div id="inc-feedback" style="font-size:11px;min-height:16px"></div>
+    </div>
+  </div>
 </div>`;
 
 PAGES.security_data = async () => {
+  await window.refreshSecurityTable();
+};
+
+window.refreshSecurityTable = async () => {
   const data = await window.INES_API.get('security');
+  window.INES_API.bust('security');
   const s = data.stats;
 
-  document.getElementById('sec-kpi').innerHTML = `
+  const kpiEl = document.getElementById('sec-kpi');
+  if (kpiEl) kpiEl.innerHTML = `
     <div class="kpi-card" style="--kpi-accent:#EF4444"><div class="kpi-label">Active Alerts</div><div class="kpi-value">${s.active}</div><div class="kpi-meta down">${s.today} new today</div></div>
     <div class="kpi-card" style="--kpi-accent:#10B981"><div class="kpi-label">Cameras Online</div><div class="kpi-value">47/50</div><div class="kpi-meta">94% uptime</div></div>
     <div class="kpi-card" style="--kpi-accent:#F59E0B"><div class="kpi-label">Total Incidents</div><div class="kpi-value">${data.incidents.length}</div><div class="kpi-meta">This period</div></div>
     <div class="kpi-card" style="--kpi-accent:#EF4444"><div class="kpi-label">High Severity Open</div><div class="kpi-value">${s.high_open}</div><div class="kpi-meta down">Urgent</div></div>`;
 
-  document.getElementById('open-badge').textContent = s.active + ' Open';
-  document.getElementById('incident-table').innerHTML = `
+  const badgeEl = document.getElementById('open-badge');
+  if (badgeEl) badgeEl.textContent = s.active + ' Open';
+
+  const tableEl = document.getElementById('incident-table');
+  if (tableEl) tableEl.innerHTML = `
     <div class="table-wrap"><table class="data-table">
-      <tr><th>ID</th><th>Type</th><th>Location</th><th>Time</th><th>Severity</th><th>Status</th></tr>
+      <tr><th>ID</th><th>Type</th><th>Location</th><th>Time</th><th>Severity</th><th>Status</th><th>Action</th></tr>
       ${data.incidents.map(i=>`<tr>
-        <td class="mono">${i.id}</td>
+        <td class="mono" style="font-size:10px">${i.id}</td>
         <td>${i.type}</td><td>${i.location}</td><td>${i.time}</td>
         <td><span class="badge ${sevBadge(i.sev)}">${i.sev}</span></td>
         <td><span class="badge ${sevBadge(i.status)}">${i.status}</span></td>
+        <td>${i.status !== 'resolved'
+          ? `<button onclick="resolveIncident('${i.id}')"
+              style="background:#10B981;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">
+              ✓ Resolve</button>`
+          : '<span style="color:#64748B;font-size:10px">—</span>'}</td>
       </tr>`).join('')}
     </table></div>`;
+};
+
+window.submitIncident = async () => {
+  const type     = document.getElementById('inc-type')?.value.trim();
+  const location = document.getElementById('inc-location')?.value.trim();
+  const severity = document.getElementById('inc-severity')?.value;
+  const feedback = document.getElementById('inc-feedback');
+
+  if (!type || !location) {
+    feedback.style.color = '#EF4444';
+    feedback.textContent = '⚠️ Type and location are required.';
+    return;
+  }
+
+  feedback.style.color = '#64748B';
+  feedback.textContent = 'Submitting…';
+
+  try {
+    const res = await fetch('/api/incidents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, location, severity })
+    });
+    const data = await res.json();
+    if (data.success) {
+      feedback.style.color = '#10B981';
+      feedback.textContent = '✅ Incident reported: ' + data.incident_id;
+      document.getElementById('inc-type').value = '';
+      document.getElementById('inc-location').value = '';
+      // Refresh table and live alerts
+      await window.refreshSecurityTable();
+      fetchLiveAlerts();
+    } else {
+      feedback.style.color = '#EF4444';
+      feedback.textContent = '❌ ' + (data.error || 'Failed');
+    }
+  } catch(e) {
+    feedback.style.color = '#EF4444';
+    feedback.textContent = '❌ ' + e.message;
+  }
+};
+
+window.resolveIncident = async (incidentId) => {
+  try {
+    await fetch('/api/incidents/' + incidentId + '/resolve', { method: 'PATCH' });
+    await window.refreshSecurityTable();
+    fetchLiveAlerts();
+  } catch(e) {
+    console.error('Resolve failed:', e.message);
+  }
 };
 
 /* ══════════════════════════════════════════════════ */

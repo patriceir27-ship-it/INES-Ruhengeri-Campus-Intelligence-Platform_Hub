@@ -122,11 +122,13 @@ window.doLogin = function() {
   applyRoleAccess(roleConfig.modules);
   navigateTo('dashboard', document.querySelector('[data-page="dashboard"]'));
   startLiveRefresh();
+  startLiveAlerts();
 };
 
 window.doLogout = function() {
   currentUser = null;
   stopLiveRefresh();
+  stopLiveAlerts();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-overlay').style.display = 'flex';
   document.getElementById('login-email').value = '';
@@ -216,9 +218,83 @@ window.toggleSidebar = function() {
 };
 
 /* ─── ALERTS PANEL ─── */
+/* ─── LIVE ALERTS ───────────────────────────────────────────────────────────
+   Fetches open security incidents from /api/security every 30 seconds.
+   Updates the bell badge count and the alerts dropdown panel in real-time.
+─────────────────────────────────────────────────────────────────────────── */
+let alertsInterval = null;
+
+async function fetchLiveAlerts() {
+  try {
+    const res  = await fetch('/api/security');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const open = (data.incidents || []).filter(i => i.status !== 'resolved');
+    const high = open.filter(i => i.sev === 'high');
+
+    // Update bell badge
+    const badge = document.getElementById('bell-badge-count');
+    if (badge) {
+      badge.textContent = open.length;
+      badge.style.background = high.length > 0 ? '#EF4444' : '#F59E0B';
+    }
+
+    // Update sec-badge in sidebar if present
+    const secBadge = document.getElementById('sec-badge');
+    if (secBadge) secBadge.textContent = open.length;
+
+    // Update panel body
+    const body = document.getElementById('alerts-panel-body');
+    if (!body) return;
+
+    if (open.length === 0) {
+      body.innerHTML = '<div style="padding:12px;color:#10B981;font-size:12px">✅ No active alerts</div>';
+    } else {
+      const sevIcon  = s => s==='high'?'🔴':s==='medium'?'🟡':'🔵';
+      const sevClass = s => s==='high'?'red':s==='medium'?'amber':'blue';
+
+      body.innerHTML = open.slice(0, 6).map(inc => `
+        <div class="alert-item-row ${sevClass(inc.sev)}"
+             onclick="navigateTo('security',document.querySelector('[data-page=security]'))"
+             style="cursor:pointer">
+          ${sevIcon(inc.sev)}
+          <b>${inc.type}</b> — ${inc.location}
+          <span>${inc.time}</span>
+        </div>`).join('');
+
+      if (open.length > 6) {
+        body.innerHTML += `<div style="padding:8px 12px;font-size:11px;color:#64748B;text-align:center">
+          +${open.length - 6} more → <span style="color:#00C2FF;cursor:pointer"
+          onclick="navigateTo('security',document.querySelector('[data-page=security]'))">View all</span>
+        </div>`;
+      }
+    }
+
+    // Timestamp
+    const ts = document.getElementById('alerts-last-updated');
+    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  } catch(e) {
+    console.warn('[Alerts]', e.message);
+  }
+}
+
 window.toggleAlerts = function() {
-  document.getElementById('alerts-panel').classList.toggle('hidden');
+  const panel = document.getElementById('alerts-panel');
+  panel.classList.toggle('hidden');
+  // Refresh on every open
+  if (!panel.classList.contains('hidden')) fetchLiveAlerts();
 };
+
+function startLiveAlerts() {
+  fetchLiveAlerts(); // immediate first load
+  alertsInterval = setInterval(fetchLiveAlerts, 30000); // refresh every 30s
+}
+
+function stopLiveAlerts() {
+  if (alertsInterval) { clearInterval(alertsInterval); alertsInterval = null; }
+}
 document.addEventListener('click', e => {
   const panel = document.getElementById('alerts-panel');
   if (!panel) return;
